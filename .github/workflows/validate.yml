@@ -1,0 +1,31 @@
+name: Validate dashboard
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check cloud script syntax
+        run: node --check cloud-sync.js
+      - name: Check inline script syntax and private shell
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, re
+          html = pathlib.Path('index.html').read_text()
+          block = re.search(r'<script id="initial-data" type="application/json">(.*?)</script>',html,re.S)
+          assert block, 'Missing initial JSON block'
+          obj=json.loads(block.group(1))
+          assert not obj['body'] and not obj['days'] and not obj['workouts'], 'Sensitive seed in public HTML'
+          assert 'id="cloudGate"' in html and 'id="appRoot" hidden' in html
+          assert 'cloud-sync.js' in html
+          scripts=re.findall(r'<script(?:\s+[^>]*)?>(.*?)</script>',html,re.S)
+          inline='\n'.join(s for s in scripts if "'use strict';" in s)
+          assert inline, 'Missing application script'
+          pathlib.Path('/tmp/dashboard-inline.js').write_text(inline)
+          PY
+          node --check /tmp/dashboard-inline.js
