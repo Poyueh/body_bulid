@@ -1,21 +1,40 @@
-# 體態導航站 Body Compass
+# 體態導航站 · Body Compass
 
-互動式體態、營養、訓練和熱量收支儀表板。
+**GitHub Pages：** https://poyueh.github.io/body_bulid/
 
-## 網站
-[GitHub Pages](https://poyueh.github.io/body_bulid/)（須先在 Repository → Settings → Pages → Build and deployment → Source 選擇 **GitHub Actions**，再從 Actions 重新執行 Deploy dashboard to GitHub Pages）。
+以 HTML + JavaScript 呈現體態、營養、運動、能量平衡趨勢；使用 Supabase Auth 與 RLS 保護登入使用者的雲端資料。
 
-主頁：`index.html`。部署流程：`.github/workflows/pages.yml`。
+## 一次性設定
 
-## 資料儲存與同步
-- 現有版本使用瀏覽器 localStorage，能保存同一瀏覽器的修改，但不同裝置**不會自動同步**。
-- 跨裝置手動同步：在「編輯與備份」點「下載完整 JSON」，到另一台裝置使用「匯入 JSON」。修改後要再匯出新檔。
-- 若需**真正自動同步**：建議建立受登入保護的私人資料庫（例如 Supabase Auth + Postgres + Row Level Security），讓每個帳號只能讀寫自己的資料。前端公開的匿名 key 搭配正確的 RLS 可以使用；切勿把 service_role key、個人存取 token 或密碼放進前端 HTML / GitHub repo。
-- 此網站目前的種子資料**內嵌在公開的 index.html 中**，代表任何訪客都可能閱讀歷史資料；未來轉用私人雲端同步時，應改成不含個人資料的公開 HTML，把資料儲存在私有資料庫中。
+1. 在 [Supabase](https://supabase.com/dashboard) 建立專案與 Authentication Email 使用者。
+2. 在 SQL Editor 建立 `public.dashboard_data`，欄位為 `user_id uuid primary key references auth.users(id)`、`data jsonb`、`updated_at timestamptz default now()`；啟用 RLS，只允許 `auth.uid()=user_id` 的 authenticated 使用者讀寫。
+3. 在 Authentication → URL Configuration 設定 Site URL / Redirect URL：`https://poyueh.github.io/body_bulid/`。
+4. 在 GitHub Pages 網站登入（使用 Authentication → Users 內的 Email／密碼；不是 GitHub 登入）。若尚未設定密碼，用網站的「忘記密碼」。
+5. **首次登入**若雲端沒有資料，匯入先前於 ChatGPT 下載的 `體態導航站_舊資料匯入_2026-10-26.json`。檔案**不放在公開倉庫**。
+6. 之後任何裝置以相同帳號登入，即可讀取／修改相同雲端資料。當前頁面重新取得焦點、切回分頁，或約每分鐘會檢查是否有別處的新紀錄。
 
-## 後續需要設定
-1. 在 GitHub Settings → Pages 設定 Source: GitHub Actions。
-2. 到 [Actions](https://github.com/Poyueh/body_bulid/actions) 重新執行部署；確認網址能開啟。
-3. 若想要跨裝置即時同步，建立 Supabase 專案及登入方式，再為本儀表板接入經過權限保護的雲端資料表。部署與資料庫是分開的兩件事。
+## 同步與備份
 
-> 注意：檔案裡包含個人健康與運動紀錄。公開 repo / GitHub Pages 不適合保存私人原始資料。
+- 每次新增或修改資料後自動向 Supabase 寫入整份 JSON。
+- 若斷線，儲存在此瀏覽器的**未同步草稿**中。看到「未同步」請重試，換裝置之前請匯出 JSON。
+- 為防止跨裝置覆蓋，同步使用 `updated_at` 版本檢查；衝突時必須手動決定讀取雲端或以本機覆蓋。此同步方式是單份 JSON 快照，**不支援多裝置同時編輯後自動合併**。
+- 「編輯與備份」可匯出完整 JSON；Supabase Free 沒有你自己可依賴的自動資料庫備份，請定期備份。
+- 首次匯入應優先使用聊天中提供的原始 JSON；若此前已在舊版 GitHub 網站修改，首次登入畫面也提供「使用這個瀏覽器的舊版記錄」。
+- 本站的雲端同步只發生於**網站內操作**。在 ChatGPT 對話中回報飲食，**尚不會自動寫入 Supabase**。
+
+## 安全與公開資訊
+
+- `cloud-sync.js` 包含 **Project URL + Publishable Key**，這是設計上可放在前端的資料；**不得**放入 Supabase Secret Key、`service_role` 金鑰、資料庫密碼或使用者登入密碼。
+- Supabase RLS 必須維持啟用。建議在 Authentication → Sign In / Providers 關閉非必要的公開註冊。
+- 新版 `index.html` 不再內嵌體重、飲食或個人健康原始資料。
+- **但舊版含歷史紀錄的 `index.html` 曾提交到公開 GitHub，過去的 commit 仍可能被外部存取。** 若需要完整移除公開 Git 歷史資料，應進行經確認的 Git 歷史重寫、建立乾淨新倉庫或後續的 GitHub 資料清理；單純刪除目前網頁內容並不會刪除歷史。
+- 登入畫面是使用者介面限制；真正的資料存取權限由 Supabase Auth 和 RLS 保證。
+
+## 專案檔案
+
+- `index.html`：靜態儀表板、原有圖表與紀錄編輯介面、登入畫面
+- `cloud-sync.js`：登入、忘記密碼、資料讀寫、衝突處理、離線草稿
+- `.github/workflows/pages.yml`：GitHub Pages 自動部署
+- `.github/workflows/validate.yml`：JavaScript 語法與公開健康資料種子檢查
+
+> 本站屬於個人資料管理工具，營養估算與穿戴裝置數據不等於醫療診斷。
