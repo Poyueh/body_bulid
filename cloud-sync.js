@@ -227,6 +227,25 @@
     $('appRoot').hidden=true;$('mobileNav').hidden=true;show('cloudLogin');
     msg('已登出。',false);
   };
+  window.cloudImportPasted=async function(){
+    var raw=$('cloudPaste').value.trim();
+    if(!raw)return msg('請先把 ChatGPT 的私人備份碼貼到輸入框。',true);
+    msg('正在檢查並還原備份…');
+    try{
+      var decoded=raw;
+      if(raw.startsWith('BC1.')){
+        if(typeof DecompressionStream==='undefined')throw Error('這個瀏覽器不支援壓縮資料解碼，請更新瀏覽器');
+        var bin=atob(raw.slice(4).replace(/\s+/g,''));
+        var bytes=Uint8Array.from(bin,function(ch){return ch.charCodeAt(0);});
+        var unzipped=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+        decoded=await new Response(unzipped).text();
+      }
+      var x=JSON.parse(decoded.replace(/^\uFEFF/,''));
+      if(!valid(x) || !x.body.length)throw Error('資料格式不符或缺少測量紀錄');
+      if(!confirm('找到 '+x.body.length+' 筆體態紀錄、'+x.days.length+' 筆每日營養、'+x.workouts.length+' 筆訓練。確定存入私人 Supabase？'))return;
+      await begin(x);
+    }catch(e){msg('備份碼匯入失敗：'+e.message,true);}
+  };
   window.cloudImportFile=async function(input){
     var f=input.files && input.files[0]; if(!f)return;
     try{
