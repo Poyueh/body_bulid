@@ -70,6 +70,13 @@
       <p>你先前的資料沒有放在公開網站原始碼。請選擇原來從 ChatGPT 下載的「體態導航站舊資料匯入 JSON」備份，即可保留所有趨勢。</p>
       <label for="cloudUpload">匯入完整 JSON 備份</label>
       <input id="cloudUpload" type="file" accept=".json,application/json" onchange="cloudImportFile(this)">
+      <div class="cloudInfo" style="margin-top:15px">
+        <strong style="color:#b5f7e0">無法下載 JSON？改用複製／貼上備份</strong>
+        <p style="margin:7px 0">在 ChatGPT 點「複製我的私人備份碼」，把內容貼進下方，再按「還原到 Supabase」。支援 BC1 壓縮備份碼和完整 JSON。</p>
+        <label for="cloudPaste">貼上備份碼／JSON</label>
+        <textarea id="cloudPaste" rows="4" autocomplete="off" spellcheck="false" placeholder="在這裡貼上 BC1. 開頭的私人備份碼" style="width:100%;background:#091923;color:#e8f9f5;border:1px solid #42606b;border-radius:10px;padding:12px;resize:vertical"></textarea>
+        <button class="primary" style="width:100%" onclick="cloudImportPasted()">貼上後還原到 Supabase</button>
+      </div>
       <div class="choice"><button class="secondary" id="cloudLegacyImport" onclick="cloudImportLegacy()" hidden>使用這個瀏覽器的舊版記錄（自動搬移）</button></div>
       <details>
         <summary style="cursor:pointer;color:#90e6ca;font-weight:800">沒有備份？從第一筆體脂開始</summary>
